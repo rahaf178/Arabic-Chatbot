@@ -9,90 +9,80 @@ import time
 import os
 import tempfile
 
+co = cohere.Client("API key")  
 
-# إعداد مكتبة cohere
-co = cohere.Client("")  # 🔑 غيّرها بمفتاحك
-
-# إعداد pygame للصوت
 pygame.init()
 
-# إعداد Whisper
 whisper_model = whisper.load_model("base")  # يمكنك تغيير "base" إلى "tiny" لتسريع الأداء
 
-# دالة تسجيل الصوت مع إيقاف عند السكون
-def record_audio(filename="input.wav", fs=44100, silence_threshold=10, max_duration=10):
-     # هنا تحدد جهاز المايك (1 هو مثال، عدل الرقم حسب جهازك)
+def record_audio(filename="input.wav", fs=44100, silence_threshold=10, max_duration=10): 
     
-    print("🎤 تسجيل الصوت... (تحدث الآن)")
+    print("تحدث الان")
+    audio = [] #A list for storing recorded audio chunks.
+    duration = 0 #Registration period.
+    silence_duration = 0 #How long has it been without a sound?
+    frame_duration = 0.5  # Every time we record only half a second.
+    frames_per_chunk = int(fs * frame_duration) #Number of samples per "half a second.
 
-    audio = []
-    duration = 0
-    silence_duration = 0
-    frame_duration = 0.5  # نصف ثانية
-    frames_per_chunk = int(fs * frame_duration)
-
-    while duration < max_duration:
+    while duration < max_duration: #As long as we do not reach the maximum duration, it continues to record.
         chunk = sd.rec(frames_per_chunk, samplerate=fs, channels=2, dtype='int16')
 
         sd.wait()
         volume = np.abs(chunk).mean()
 
-        if volume > silence_threshold:
-            audio.append(chunk)
-            silence_duration = 0
-        else:
-            silence_duration += frame_duration
-            if silence_duration > 1.5 and len(audio) > 0:  # توقف بعد 1.5 ثانية من السكون
+        if volume > silence_threshold: #If the sound is above the silence_threshold, then there is speech.
+            audio.append(chunk) #We save this segment to audio.
+            silence_duration = 0 #We reset the silence counter.
+        else: #If there isn't enough audio:
+            silence_duration += frame_duration #Increase silence_duration.
+            if silence_duration > 1.5 and len(audio) > 0:  #If more than 1.5 seconds pass without audio and there is previously recorded speech, stop recording .
                 break
 
-        duration += frame_duration
+        duration += frame_duration #We add half a second to the total recorded time.
 
     if audio:
-        audio_data = np.concatenate(audio, axis=0)
-        wav.write(filename, fs, audio_data)
+        audio_data = np.concatenate(audio, axis=0) #We merge all the audio pieces into one piece using np.concatenate.
+        wav.write(filename, fs, audio_data) #Save the file as WAV using wav.write.
         print("✅ تم التسجيل.")
         return True
     else:
-        print("🚫 لم يتم اكتشاف صوت.")
+        print(" لم يتم اكتشاف صوت.")
         return False
 
 
-# دالة تحويل الصوت إلى نص
 def transcribe_audio(audio_path):
     print("🧠 تحويل الصوت إلى نص...")
-    result = whisper_model.transcribe(audio_path, language="ar")
-    return result["text"].strip()
+    result = whisper_model.transcribe(audio_path, language="ar") #The Whisper model is used to convert the speech in the audio file into written text in Arabic.
+    return result["text"].strip() # strip():To remove extra spaces at the beginning or end.
 
-# دالة توليد الرد
 def generate_response(user_text):
-    if not user_text.strip():
-        return "لم أسمع شيئًا واضحًا."
+    if not user_text.strip(): #Checks if the entered text is empty or contains spaces.
+        return "لم أسمع شيئًا واضحًا." #If the text is empty.
     print("🤖 توليد الرد...")
-    response = co.chat(message=user_text)
+    response = co.chat(message=user_text) #The user_text is sent to the Cohere AI model using:co: The connection object to the cohere library.
     return response.text.strip()
 
-# دالة تحويل النص إلى صوت
+#A function that takes text and converts it to audio.
 def speak(text):
     print("🔊 تحويل النص إلى صوت...")
-    tts = gTTS(text=text, lang="ar")
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
-        temp_path = fp.name
-    tts.save(temp_path)
-    pygame.mixer.music.load(temp_path)
-    pygame.mixer.music.play()
+    tts = gTTS(text=text, lang="ar") #Convert Arabic text (lang="ar") to speech using Google Text-to-Speech library.
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp: #Creates a temporary .mp3 file,delete=False: So the file is not automatically deleted after use.
+        temp_path = fp.name #fp.name: Path to the temporary file.
+    tts.save(temp_path) #The generated sound is saved inside the temporary file.
+    pygame.mixer.music.load(temp_path) #Loads the audio file using pygame to play it.
+    pygame.mixer.music.play() #Plays the audio file.
     while pygame.mixer.music.get_busy():
         time.sleep(0.1)
-    os.remove(temp_path)
+    os.remove(temp_path) #After the run is complete, the temporary file is deleted from the device.
 
 # الدالة الرئيسية
 def main():
-    if record_audio("input.wav"):
-        user_text = transcribe_audio("input.wav")
-        print("👤 أنت:", user_text)
-        response = generate_response(user_text)
-        print("🤖 المساعد:", response)
+    if record_audio("input.wav"): #If sound is detected, the remaining steps continue.
+        user_text = transcribe_audio("input.wav") #Converts the input.wav audio file to written text using the Whisper model.
+        print("👤 أنت:", user_text) # Prints the text you said.
+        response = generate_response(user_text) #Sends the text to Cohere, receives the response as text, and saves it in the response variable.
+        print("🤖 المساعد:", response) #Converts the response to speech using gTTS.
         speak(response)
 
 if __name__ == "__main__":
-
     main()
