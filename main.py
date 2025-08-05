@@ -11,7 +11,7 @@ import tempfile
 
 
 # إعداد مكتبة cohere
-co = cohere.Client("636EaZPxU1EBLwUdvcxs1hxFIjqYFtOI9KEPmMgH")  # 🔑 غيّرها بمفتاحك
+co = cohere.Client("")  # 🔑 غيّرها بمفتاحك
 
 # إعداد pygame للصوت
 pygame.init()
@@ -94,4 +94,5 @@ def main():
         speak(response)
 
 if __name__ == "__main__":
+
     main()
