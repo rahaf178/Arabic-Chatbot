@@ -13,7 +13,7 @@ co = cohere.Client("API key")
 
 pygame.init()
 
-whisper_model = whisper.load_model("base")  # يمكنك تغيير "base" إلى "tiny" لتسريع الأداء
+whisper_model = whisper.load_model("base")  
 
 def record_audio(filename="input.wav", fs=44100, silence_threshold=10, max_duration=10): 
     
@@ -84,4 +84,5 @@ def main():
         speak(response)
 
 if __name__ == "__main__":
+
     main()
